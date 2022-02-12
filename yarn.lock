@@ -506,6 +506,19 @@
     ethers "^5.4.5"
     lodash "^4.17.21"
 
+"@eth-optimism/core-utils@^0.7.7":
+  version "0.7.7"
+  resolved "https://registry.yarnpkg.com/@eth-optimism/core-utils/-/core-utils-0.7.7.tgz#c993d45d2be7a1956284621ad18129a88880c658"
+  integrity sha512-JO3UvrlnOpeCKzDd/9mCd47n1FFjTOJtfG1JxUx24OfC/0yjZv6sKXDoMlZoDJArTQtCyyZ9QB7vulSFjOC6rA==
+  dependencies:
+    "@ethersproject/abstract-provider" "^5.5.1"
+    "@ethersproject/bytes" "^5.5.0"
+    "@ethersproject/providers" "^5.5.3"
+    "@ethersproject/web" "^5.5.1"
+    chai "^4.3.4"
+    ethers "^5.5.4"
+    lodash "^4.17.21"
+
 "@eth-optimism/smock@1.1.10":
   version "1.1.10"
   resolved "https://registry.yarnpkg.com/@eth-optimism/smock/-/smock-1.1.10.tgz#98a6eefc994ccf707f52ab06849468f3cc57bdb7"

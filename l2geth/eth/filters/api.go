@@ -94,6 +94,37 @@ func (api *PublicFilterAPI) timeoutLoop() {
 	}
 }
 
+func (api *PublicFilterAPI) NewAcceptedTransactions(ctx context.Context) (*rpc.Subscription, error) {
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
+	}
+
+	rpcSub := notifier.CreateSubscription()
+
+	go func() {
+		transactions := make(chan types.Transactions, 128)
+		acceptedTxSub := api.events.SubscribeAcceptedTxs(transactions)
+
+		for {
+			select {
+			case txes := <-transactions:
+				for _, tx := range txes {
+					notifier.Notify(rpcSub.ID, tx)
+				}
+			case <-rpcSub.Err():
+				acceptedTxSub.Unsubscribe()
+				return
+			case <-notifier.Closed():
+				acceptedTxSub.Unsubscribe()
+				return
+			}
+		}
+	}()
+
+	return rpcSub, nil
+}
+
 // NewPendingTransactionFilter creates a filter that fetches pending transaction hashes
 // as transactions enter the pending state.
 //

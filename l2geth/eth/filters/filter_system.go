@@ -50,6 +50,7 @@ const (
 	// PendingTransactionsSubscription queries tx hashes for pending
 	// transactions entering the pending state
 	PendingTransactionsSubscription
+	AcceptedTransactionsSubscription
 	// BlocksSubscription queries hashes for blocks that are imported
 	BlocksSubscription
 	// LastSubscription keeps track of the last index
@@ -75,6 +76,7 @@ type subscription struct {
 	logsCrit  ethereum.FilterQuery
 	logs      chan []*types.Log
 	hashes    chan []common.Hash
+	transactions chan types.Transactions
 	headers   chan *types.Header
 	installed chan struct{} // closed when the filter is installed
 	err       chan error    // closed when the filter is uninstalled
@@ -233,6 +235,7 @@ func (es *EventSystem) subscribeMinedPendingLogs(crit ethereum.FilterQuery, logs
 		created:   time.Now(),
 		logs:      logs,
 		hashes:    make(chan []common.Hash),
+		transactions: make(chan types.Transactions),
 		headers:   make(chan *types.Header),
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -250,6 +253,7 @@ func (es *EventSystem) subscribeLogs(crit ethereum.FilterQuery, logs chan []*typ
 		created:   time.Now(),
 		logs:      logs,
 		hashes:    make(chan []common.Hash),
+		transactions: make(chan types.Transactions),
 		headers:   make(chan *types.Header),
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -267,6 +271,7 @@ func (es *EventSystem) subscribePendingLogs(crit ethereum.FilterQuery, logs chan
 		created:   time.Now(),
 		logs:      logs,
 		hashes:    make(chan []common.Hash),
+		transactions: make(chan types.Transactions),
 		headers:   make(chan *types.Header),
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -283,6 +288,7 @@ func (es *EventSystem) SubscribeNewHeads(headers chan *types.Header) *Subscripti
 		created:   time.Now(),
 		logs:      make(chan []*types.Log),
 		hashes:    make(chan []common.Hash),
+		transactions: make(chan types.Transactions),
 		headers:   headers,
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -299,9 +305,27 @@ func (es *EventSystem) SubscribePendingTxs(hashes chan []common.Hash) *Subscript
 		created:   time.Now(),
 		logs:      make(chan []*types.Log),
 		hashes:    hashes,
+		transactions: make(chan types.Transactions),
 		headers:   make(chan *types.Header),
 		installed: make(chan struct{}),
 		err:       make(chan error),
+	}
+	return es.subscribe(sub)
+}
+
+// SubscribeAcceptedTxs creates a subscription that writes transactions for
+// transactions that have been confirmed
+func (es *EventSystem) SubscribeAcceptedTxs(transactions chan types.Transactions) *Subscription {
+	sub := &subscription{
+		id:           rpc.NewID(),
+		typ:          AcceptedTransactionsSubscription,
+		created:      time.Now(),
+		logs:         make(chan []*types.Log),
+		hashes:       make(chan []common.Hash),
+		transactions: transactions,
+		headers:      make(chan *types.Header),
+		installed:    make(chan struct{}),
+		err:          make(chan error),
 	}
 	return es.subscribe(sub)
 }
@@ -348,6 +372,11 @@ func (es *EventSystem) handleTxsEvent(filters filterIndex, ev core.NewTxsEvent) 
 	}
 	for _, f := range filters[PendingTransactionsSubscription] {
 		f.hashes <- hashes
+	}
+		for _, f := range filters[AcceptedTransactionsSubscription] {
+		// TODO for some reason, sending a transaction object over the wire works well except for the fact that the client
+		// receiving the object won't get the hash of the transaction. It seems this might be because the hash is computed.
+		f.transactions <- ev.Txs
 	}
 }
 
